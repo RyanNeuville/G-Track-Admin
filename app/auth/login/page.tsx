@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -20,10 +20,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const supabase = createClient()
+
+  // Subscribe to auth state changes
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // Redirect after signin
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 500)
+      }
+    })
+
+    return () => {
+      data?.subscription?.unsubscribe()
+    }
+  }, [supabase, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
 
     try {
@@ -34,16 +50,16 @@ export default function LoginPage() {
 
       if (error) {
         toast.error(error.message)
+        setIsLoading(false)
         return
       }
 
-      if (data.user) {
+      if (data.user && data.session) {
         toast.success('Connecté avec succès!')
-        router.push('/dashboard')
+        // The useEffect will handle the redirect
       }
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Une erreur est survenue')
-    } finally {
       setIsLoading(false)
     }
   }
