@@ -1,89 +1,64 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
-  const routes = [
-    {
-      id: 'ROUTE001',
-      nom: 'Circuit Centre-Ville Paris',
-      region: 'Île-de-France',
-      zone: 'Paris 1-4',
-      distance_km: 45.2,
-      duree_estimee: '8h30',
-      points_arret: 12,
-      chauffeur: 'Jean Dupont',
-      statut: 'actif',
-      priorite: 'haute',
-      dernier_execution: '2024-03-20',
-      prochaine_execution: '2024-03-21',
-    },
-    {
-      id: 'ROUTE002',
-      nom: 'Banlieue Est',
-      region: 'Île-de-France',
-      zone: 'Val-de-Marne',
-      distance_km: 38.7,
-      duree_estimee: '7h45',
-      points_arret: 10,
-      chauffeur: 'Sophie Dubois',
-      statut: 'actif',
-      priorite: 'moyenne',
-      dernier_execution: '2024-03-19',
-      prochaine_execution: '2024-03-21',
-    },
-    {
-      id: 'ROUTE003',
-      nom: 'Corridor Lyon-Saint-Étienne',
-      region: 'Rhône-Alpes',
-      zone: 'Loire',
-      distance_km: 52.5,
-      duree_estimee: '9h00',
-      points_arret: 15,
-      chauffeur: 'Marie Martin',
-      statut: 'actif',
-      priorite: 'haute',
-      dernier_execution: '2024-03-20',
-      prochaine_execution: '2024-03-22',
-    },
-    {
-      id: 'ROUTE004',
-      nom: 'Littoral Provence',
-      region: 'Provence-Alpes',
-      zone: 'Bouches-du-Rhône',
-      distance_km: 61.3,
-      duree_estimee: '9h45',
-      points_arret: 18,
-      chauffeur: 'Disponible',
-      statut: 'en pause',
-      priorite: 'moyenne',
-      dernier_execution: '2024-03-18',
-      prochaine_execution: '2024-03-22',
-    },
-    {
-      id: 'ROUTE005',
-      nom: 'Métropole Lille',
-      region: 'Nord-Pas-de-Calais',
-      zone: 'Nord',
-      distance_km: 32.1,
-      duree_estimee: '6h30',
-      points_arret: 8,
-      chauffeur: 'Disponible',
-      statut: 'inactif',
-      priorite: 'basse',
-      dernier_execution: '2024-03-15',
-      prochaine_execution: '2024-03-25',
-    },
-  ]
+  const supabase = await createClient()
+  
+  // Get routes and join with profiles through drivers to get the driver's name
+  const { data, error } = await supabase
+    .from('routes')
+    .select(`
+      *,
+      drivers (
+        profiles (
+          full_name
+        )
+      )
+    `)
+    .order('created_at', { ascending: false })
 
-  return NextResponse.json(routes)
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Map database fields to the format expected by the frontend
+  const formattedRoutes = data.map((route: any) => ({
+    id: route.id,
+    nom: `Route ${route.region || 'Locale'} #${route.id.slice(0, 4)}`,
+    region: route.region,
+    zone: 'Zone à préciser',
+    distance_km: route.total_distance,
+    duree_estimee: `${Math.floor((route.estimated_duration_minutes || 0) / 60)}h${(route.estimated_duration_minutes || 0) % 60}`,
+    points_arret: route.total_deliveries,
+    chauffeur: route.drivers?.profiles?.full_name || 'Non assigné',
+    statut: route.status === 'completed' ? 'inactif' : (route.status === 'in_progress' ? 'actif' : 'en pause'),
+    priorite: 'moyenne',
+    dernier_execution: route.updated_at ? new Date(route.updated_at).toLocaleDateString('fr-FR') : null,
+    prochaine_execution: 'A planifier',
+  }))
+
+  return NextResponse.json(formattedRoutes)
 }
 
 export async function POST(request: Request) {
+  const supabase = await createClient()
   const body = await request.json()
-  const newRoute = {
-    id: `ROUTE${String(Date.now()).slice(-6)}`,
-    ...body,
-    statut: 'inactif',
-    dernier_execution: null,
+  
+  const { data, error } = await supabase
+    .from('routes')
+    .insert([{
+      region: body.region,
+      total_distance: parseFloat(body.distance_km),
+      total_deliveries: parseInt(body.points_arret),
+      status: 'pending',
+      estimated_duration_minutes: 480, // Default 8h for now
+    }])
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  return NextResponse.json(newRoute, { status: 201 })
+
+  return NextResponse.json(data, { status: 201 })
 }
