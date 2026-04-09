@@ -21,7 +21,7 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const formattedDeliveries = data.map((delivery: any) => ({
+  const formattedDeliveries = (data || []).map((delivery: any) => ({
     id: delivery.id,
     numero: `LIV-${new Date(delivery.delivery_date).getFullYear()}-${delivery.id.slice(0, 3).toUpperCase()}`,
     chauffeur: delivery.drivers?.profiles?.full_name || 'Non assigné',

@@ -100,8 +100,9 @@ export function generateCSVReport(
     columns,
     ...data.map((row) =>
       columns.map((col) => {
-        const value = row[col.toLowerCase()]
-        return value ? String(value) : '-'
+        // Aligner la recherche de clé avec la logique PDF pour plus de robustesse
+        const value = row[col] || row[col.toLowerCase()]
+        return value !== undefined && value !== null ? String(value) : '-'
       })
     ),
   ]

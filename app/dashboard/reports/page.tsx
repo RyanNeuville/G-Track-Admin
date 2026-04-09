@@ -21,15 +21,21 @@ export default function ReportsPage() {
           fetch('/api/deliveries'),
           fetch('/api/users')
         ])
-        const [delData, userData] = await Promise.all([
-          delRes.json(),
-          userRes.json()
-        ])
-        setDeliveries(delData)
-        setUsers(userData)
+        
+        const delData = delRes.ok ? await delRes.json() : []
+        const userData = userRes.ok ? await userRes.json() : []
+        
+        setDeliveries(Array.isArray(delData) ? delData : [])
+        setUsers(Array.isArray(userData) ? userData : [])
+        
+        if (!delRes.ok || !userRes.ok) {
+          toast.error('Certaines données n\'ont pas pu être chargées')
+        }
       } catch (error) {
         console.error('Error fetching reports data:', error)
         toast.error('Erreur lors du chargement des données')
+        setDeliveries([])
+        setUsers([])
       } finally {
         setIsLoading(false)
       }
