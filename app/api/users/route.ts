@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 export async function GET() {
-  const supabase = await createClient()
+  const supabase = await createAdminClient()
   
   const { data, error } = await supabase
     .from('profiles')
@@ -13,7 +13,7 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const formattedUsers = data.map((profile: any) => ({
+  const formattedUsers = (data || []).map((profile: any) => ({
     id: profile.id,
     nom: profile.full_name,
     email: profile.email,
@@ -28,38 +28,61 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const body = await request.json()
-  
-  // Mapping roles to DB constraints: 'Administrateur', 'Chauffeur'
-  const dbRole = body.role === 'admin' ? 'Administrateur' : 'Chauffeur'
-  
-  const { data, error } = await supabase
-    .from('profiles')
-    .insert([{
-      full_name: body.nom,
+  try {
+    const supabase = await createAdminClient()
+    const body = await request.json()
+    
+    const dbRole = body.role === 'admin' ? 'Administrateur' : 'Chauffeur'
+    
+    // 1. Create the Auth user first (Bypasses email confirmation for admins)
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: body.email,
-      role: dbRole,
-      phone: body.telephone,
-      status: 'actif',
-    }])
-    .select()
-    .single()
+      password: 'GTrack' + Math.random().toString(36).slice(-8) + '!',
+      email_confirm: true,
+      user_metadata: {
+        full_name: body.nom,
+        role: dbRole
+      }
+    })
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (authError) {
+      return NextResponse.json({ error: `Auth Error: ${authError.message}` }, { status: 400 })
+    }
+
+    // 2. Insert into the profiles table (using the auth user id)
+    // Note: If you have a trigger in SQL, this might not be needed, but we do it manually to be safe
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert([{
+        id: authData.user.id,
+        full_name: body.nom,
+        email: body.email,
+        role: dbRole,
+        phone: body.telephone,
+        status: 'actif',
+      }])
+      .select()
+      .single()
+
+    if (error) {
+      // Cleanup auth user if profile insert fails
+      await supabase.auth.admin.deleteUser(authData.user.id)
+      return NextResponse.json({ error: `Profile Error: ${error.message}` }, { status: 500 })
+    }
+
+    const formattedUser = {
+      id: data.id,
+      nom: data.full_name,
+      email: data.email,
+      role: body.role, // Return frontend-style role
+      statut: data.status,
+      telephone: data.phone,
+      dateEmbauche: new Date(data.created_at).toISOString().split('T')[0],
+      livraisons: 0,
+    }
+
+    return NextResponse.json(formattedUser, { status: 201 })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
-
-  const formattedUser = {
-    id: data.id,
-    nom: data.full_name,
-    email: data.email,
-    role: data.role,
-    statut: data.status,
-    telephone: data.phone,
-    dateEmbauche: new Date(data.created_at).toISOString().split('T')[0],
-    livraisons: 0,
-  }
-
-  return NextResponse.json(formattedUser, { status: 201 })
 }
