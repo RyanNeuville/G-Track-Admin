@@ -4,28 +4,54 @@ import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { createClient } from '@/lib/supabase/client'
 
 interface Driver {
   id: string
   nom: string
   lat: number
   lng: number
-  statut: 'actif' | 'inactif' | 'en repos'
+  statut: string
   colis: number
 }
-
-const driversData: Driver[] = [
-  { id: '1', nom: 'Jean Dupont', lat: 48.8566, lng: 2.3522, statut: 'actif', colis: 8 },
-  { id: '2', nom: 'Marie Martin', lat: 48.9215, lng: 2.3989, statut: 'actif', colis: 12 },
-  { id: '3', nom: 'Pierre Bernard', lat: 48.7465, lng: 2.2987, statut: 'en repos', colis: 5 },
-  { id: '4', nom: 'Sophie Leclerc', lat: 48.8355, lng: 2.3589, statut: 'actif', colis: 10 },
-]
 
 export function TrackingMap() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
-  const markersRef = useRef<L.Marker[]>([])
+  const markersRef = useRef<{ [key: string]: L.Marker }>({})
+  const [drivers, setDrivers] = useState<Driver[]>([])
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
+  const supabase = createClient()
+
+  const fetchDrivers = async () => {
+    const { data, error } = await supabase
+      .from('drivers')
+      .select(`
+        id,
+        status,
+        latitude,
+        longitude,
+        profiles (
+          full_name
+        )
+      `)
+
+    if (error) {
+      console.error('Error fetching drivers:', error)
+      return
+    }
+
+    const formattedDrivers: Driver[] = data.map((d: any) => ({
+      id: d.id,
+      nom: d.profiles?.full_name || 'Anonyme',
+      lat: Number(d.latitude) || 48.8566,
+      lng: Number(d.longitude) || 2.3522,
+      statut: d.status,
+      colis: 0, // Would need another join for active deliveries
+    }))
+
+    setDrivers(formattedDrivers)
+  }
 
   useEffect(() => {
     if (!mapContainer.current) return
@@ -39,21 +65,38 @@ export function TrackingMap() {
       maxZoom: 19,
     }).addTo(map.current)
 
-    // Clean up
+    fetchDrivers()
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('drivers-location')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'drivers' },
+        (payload) => {
+          const updatedDriver = payload.new as any
+          setDrivers((prev) => 
+            prev.map((d) => 
+              d.id === updatedDriver.id 
+                ? { ...d, lat: Number(updatedDriver.latitude), lng: Number(updatedDriver.longitude), statut: updatedDriver.status }
+                : d
+            )
+          )
+        }
+      )
+      .subscribe()
+
     return () => {
       map.current?.remove()
+      supabase.removeChannel(channel)
     }
   }, [])
 
   useEffect(() => {
     if (!map.current) return
 
-    // Remove existing markers
-    markersRef.current.forEach((marker) => marker.remove())
-    markersRef.current = []
-
-    // Add driver markers
-    driversData.forEach((driver) => {
+    // Update markers based on drivers state
+    drivers.forEach((driver) => {
       const color =
         driver.statut === 'actif'
           ? '#2ECC71'
@@ -66,121 +109,100 @@ export function TrackingMap() {
         html: `
           <div style="
             background-color: ${color};
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             border: 3px solid white;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-weight: bold;
-            font-size: 12px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
           ">
-            ${driver.colis}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 13.1V16c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
           </div>
         `,
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
       })
 
-      const marker = L.marker([driver.lat, driver.lng], { icon })
-        .bindPopup(
-          `<div style="text-align: center;">
-            <p style="font-weight: bold; margin: 0 0 4px 0;">${driver.nom}</p>
-            <p style="font-size: 12px; margin: 0 0 4px 0;">Statut: ${driver.statut}</p>
-            <p style="font-size: 12px; margin: 0;">Colis: ${driver.colis}</p>
-          </div>`
-        )
-        .addTo(map.current!)
-        .on('click', () => setSelectedDriver(driver))
-
-      markersRef.current.push(marker)
+      if (markersRef.current[driver.id]) {
+        markersRef.current[driver.id].setLatLng([driver.lat, driver.lng])
+      } else {
+        const marker = L.marker([driver.lat, driver.lng], { icon })
+          .bindPopup(`<p style="font-weight: bold; margin: 0;">${driver.nom}</p><p style="margin: 0; font-size: 11px;">Statut: ${driver.statut}</p>`)
+          .addTo(map.current!)
+          .on('click', () => setSelectedDriver(driver))
+        
+        markersRef.current[driver.id] = marker
+      }
     })
-  }, [])
+  }, [drivers])
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle>Suivi en direct</CardTitle>
-          <CardDescription>Position actuelle des chauffeurs</CardDescription>
+          <CardDescription>Position réelle synchronisée via Supabase</CardDescription>
         </CardHeader>
         <CardContent>
-          <div
-            ref={mapContainer}
-            className="h-96 rounded-md border border-border"
-          />
+          <div ref={mapContainer} className="h-[500px] rounded-md border border-border" />
         </CardContent>
       </Card>
 
-      {selectedDriver && (
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Informations du chauffeur</CardTitle>
+            <CardTitle>Chauffeurs connectés</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <p>
-                <span className="font-medium">Nom:</span> {selectedDriver.nom}
-              </p>
-              <p>
-                <span className="font-medium">Statut:</span>{' '}
-                <span
-                  className={
-                    selectedDriver.statut === 'actif'
-                      ? 'text-accent'
-                      : 'text-muted-foreground'
-                  }
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+              {drivers.length === 0 && <p className="text-sm text-muted-foreground">Aucun chauffeur en ligne.</p>}
+              {drivers.map((driver) => (
+                <div
+                  key={driver.id}
+                  className={`flex items-center justify-between rounded-md border p-3 cursor-pointer transition-colors ${selectedDriver?.id === driver.id ? 'bg-accent/10 border-accent' : 'hover:bg-muted/50'}`}
+                  onClick={() => {
+                    setSelectedDriver(driver)
+                    map.current?.setView([driver.lat, driver.lng], 15)
+                  }}
                 >
-                  {selectedDriver.statut}
-                </span>
-              </p>
-              <p>
-                <span className="font-medium">Colis en cours:</span>{' '}
-                {selectedDriver.colis}
-              </p>
-              <p>
-                <span className="font-medium">Position:</span> {selectedDriver.lat.toFixed(4)}, {selectedDriver.lng.toFixed(4)}
-              </p>
+                  <div>
+                    <p className="font-medium">{driver.nom}</p>
+                    <p className="text-xs text-muted-foreground">{driver.lat.toFixed(5)}, {driver.lng.toFixed(5)}</p>
+                  </div>
+                  <div className={`h-2.5 w-2.5 rounded-full ${driver.statut === 'actif' ? 'bg-accent animate-pulse' : 'bg-muted-foreground'}`} />
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
-      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Chauffeurs actifs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {driversData.map((driver) => (
-              <div
-                key={driver.id}
-                className="flex items-center justify-between rounded-md border p-3 cursor-pointer hover:bg-muted/50"
-                onClick={() => setSelectedDriver(driver)}
-              >
-                <div>
-                  <p className="font-medium">{driver.nom}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {driver.colis} colis
-                  </p>
+        {selectedDriver && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Détails du véhicule</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-sm text-muted-foreground">Chauffeur</span>
+                  <span className="font-medium">{selectedDriver.nom}</span>
                 </div>
-                <div
-                  className={`h-3 w-3 rounded-full ${
-                    driver.statut === 'actif'
-                      ? 'bg-accent'
-                      : driver.statut === 'en repos'
-                        ? 'bg-yellow-500'
-                        : 'bg-muted-foreground'
-                  }`}
-                />
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-sm text-muted-foreground">Statut</span>
+                  <span className={`text-sm font-medium ${selectedDriver.statut === 'actif' ? 'text-accent' : 'text-orange-500'}`}>{selectedDriver.statut}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Position</span>
+                  <span className="text-sm font-mono">{selectedDriver.lat.toFixed(4)}, {selectedDriver.lng.toFixed(4)}</span>
+                </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

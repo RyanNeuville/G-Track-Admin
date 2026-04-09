@@ -1,85 +1,61 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
-  const deliveries = [
-    {
-      id: 'DEL001',
-      numero: 'TOUR-2024-001',
-      chauffeur: 'Jean Dupont',
-      date: '2024-03-20',
-      colis: 12,
-      distance: '45.2 km',
-      statut: 'en cours',
-      heure_depart: '08:30',
-      heure_prevue: '17:30',
-      livraisons_reussies: 11,
-      region: 'Île-de-France',
-    },
-    {
-      id: 'DEL002',
-      numero: 'TOUR-2024-002',
-      chauffeur: 'Marie Martin',
-      date: '2024-03-20',
-      colis: 8,
-      distance: '32.5 km',
-      statut: 'en cours',
-      heure_depart: '08:45',
-      heure_prevue: '16:00',
-      livraisons_reussies: 7,
-      region: 'Rhône-Alpes',
-    },
-    {
-      id: 'DEL003',
-      numero: 'TOUR-2024-003',
-      chauffeur: 'Sophie Dubois',
-      date: '2024-03-19',
-      colis: 15,
-      distance: '52.0 km',
-      statut: 'terminée',
-      heure_depart: '08:00',
-      heure_prevue: '18:00',
-      livraisons_reussies: 14,
-      region: 'Provence-Alpes',
-    },
-    {
-      id: 'DEL004',
-      numero: 'TOUR-2024-004',
-      chauffeur: 'Jean Dupont',
-      date: '2024-03-19',
-      colis: 10,
-      distance: '38.7 km',
-      statut: 'terminée',
-      heure_depart: '09:00',
-      heure_prevue: '17:00',
-      livraisons_reussies: 10,
-      region: 'Île-de-France',
-    },
-    {
-      id: 'DEL005',
-      numero: 'TOUR-2024-005',
-      chauffeur: 'Marie Martin',
-      date: '2024-03-18',
-      colis: 11,
-      distance: '41.3 km',
-      statut: 'terminée',
-      heure_depart: '08:30',
-      heure_prevue: '17:30',
-      livraisons_reussies: 11,
-      region: 'Rhône-Alpes',
-    },
-  ]
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('routes')
+    .select(`
+      *,
+      drivers (
+        profiles (
+          full_name
+        )
+      )
+    `)
+    .order('delivery_date', { ascending: false })
 
-  return NextResponse.json(deliveries)
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  const formattedDeliveries = data.map((route: any) => ({
+    id: route.id,
+    numero: `TOUR-${new Date(route.delivery_date).getFullYear()}-${route.id.slice(0, 3).toUpperCase()}`,
+    chauffeur: route.drivers?.profiles?.full_name || 'Non assigné',
+    date: route.delivery_date,
+    colis: route.total_deliveries,
+    distance: `${route.total_distance} km`,
+    statut: route.status === 'in_progress' ? 'en cours' : (route.status === 'completed' ? 'terminée' : 'en attente'),
+    heure_depart: route.created_at ? new Date(route.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
+    heure_prevue: '18:00',
+    livraisons_reussies: route.completed_deliveries,
+    region: route.region,
+  }))
+
+  return NextResponse.json(formattedDeliveries)
 }
 
 export async function POST(request: Request) {
+  const supabase = await createClient()
   const body = await request.json()
-  const newDelivery = {
-    id: `DEL${String(Date.now()).slice(-6)}`,
-    numero: `TOUR-2024-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-    ...body,
-    statut: 'en cours',
-    heure_depart: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+  
+  const { data, error } = await supabase
+    .from('routes')
+    .insert([{
+      delivery_date: body.date || new Date().toISOString().split('T')[0],
+      region: body.region,
+      total_deliveries: parseInt(body.colis) || 0,
+      total_distance: parseFloat(body.distance) || 0,
+      status: 'pending',
+    }])
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  return NextResponse.json(newDelivery, { status: 201 })
+
+  return NextResponse.json(data, { status: 201 })
 }

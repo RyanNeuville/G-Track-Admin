@@ -1,75 +1,67 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
-  const packages = [
-    {
-      id: 'PKG001',
-      numero: 'FR-2024-001-001',
-      destinataire: 'Acme Corp',
-      adresse: '123 Rue de Paris, 75000 Paris',
-      poids: '2.5 kg',
-      statut: 'livré',
-      dateCreation: '2024-03-10',
-      dateLivraison: '2024-03-12',
-      valeur: '150.00 €',
-    },
-    {
-      id: 'PKG002',
-      numero: 'FR-2024-001-002',
-      destinataire: 'TechStart SARL',
-      adresse: '456 Avenue Lyon, 69000 Lyon',
-      poids: '1.2 kg',
-      statut: 'en transit',
-      dateCreation: '2024-03-15',
-      dateLivraison: null,
-      valeur: '280.00 €',
-    },
-    {
-      id: 'PKG003',
-      numero: 'FR-2024-001-003',
-      destinataire: 'Boutique Mode',
-      adresse: '789 Rue Marseille, 13000 Marseille',
-      poids: '0.8 kg',
-      statut: 'en attente',
-      dateCreation: '2024-03-20',
-      dateLivraison: null,
-      valeur: '95.50 €',
-    },
-    {
-      id: 'PKG004',
-      numero: 'FR-2024-001-004',
-      destinataire: 'Restaurant Le Gourmet',
-      adresse: '321 Quai Lille, 59000 Lille',
-      poids: '3.0 kg',
-      statut: 'retard',
-      dateCreation: '2024-03-08',
-      dateLivraison: '2024-03-21',
-      valeur: '420.00 €',
-    },
-    {
-      id: 'PKG005',
-      numero: 'FR-2024-001-005',
-      destinataire: 'Cabinet Juridique',
-      adresse: '654 Rue Toulouse, 31000 Toulouse',
-      poids: '0.5 kg',
-      statut: 'livré',
-      dateCreation: '2024-03-12',
-      dateLivraison: '2024-03-14',
-      valeur: '75.00 €',
-    },
-  ]
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('packages')
+    .select('*')
+    .order('created_at', { ascending: false })
 
-  return NextResponse.json(packages)
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Map database fields to the format expected by the frontend
+  const formattedPackages = data.map((pkg: any) => ({
+    id: pkg.id,
+    numero: pkg.tracking_number,
+    destinataire: pkg.recipient_name,
+    adresse: pkg.recipient_address,
+    poids: `${pkg.weight} kg`,
+    statut: pkg.status,
+    dateCreation: new Date(pkg.created_at).toLocaleDateString('fr-FR'),
+    valeur: 'A préciser', // This field isn't in the DB schema yet
+  }))
+
+  return NextResponse.json(formattedPackages)
 }
 
 export async function POST(request: Request) {
+  const supabase = await createClient()
   const body = await request.json()
-  const newPackage = {
-    id: `PKG${String(Date.now()).slice(-6)}`,
-    numero: `FR-2024-001-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-    ...body,
-    statut: 'en attente',
-    dateCreation: new Date().toISOString().split('T')[0],
+  
+  // Map frontend body to database fields
+  const { data, error } = await supabase
+    .from('packages')
+    .insert([{
+      tracking_number: `FR-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+      recipient_name: body.destinataire,
+      recipient_address: body.adresse,
+      weight: parseFloat(body.poids),
+      status: 'en attente',
+      sender_name: 'Expéditeur par défaut', // Required in schema but not provided by mock frontend yet
+      sender_address: 'Adresse par défaut',
+    }])
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  return NextResponse.json(newPackage, { status: 201 })
+
+  // Format the returned data for the frontend
+  const formattedPackage = {
+    id: data.id,
+    numero: data.tracking_number,
+    destinataire: data.recipient_name,
+    adresse: data.recipient_address,
+    poids: `${data.weight} kg`,
+    statut: data.status,
+    dateCreation: new Date(data.created_at).toLocaleDateString('fr-FR'),
+    valeur: 'A préciser',
+  }
+
+  return NextResponse.json(formattedPackage, { status: 201 })
 }
