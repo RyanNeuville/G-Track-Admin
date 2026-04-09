@@ -27,7 +27,8 @@ export function NotificationsCenter() {
   const supabase = createClient()
 
   const fetchNotifications = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
     if (!user) return
 
     const { data, error } = await supabase
@@ -59,7 +60,8 @@ export function NotificationsCenter() {
 
     // Subscribe to new notifications
     const setupSubscription = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) return
 
       const channel = supabase
@@ -111,7 +113,8 @@ export function NotificationsCenter() {
   }
 
   const handleMarkAllAsRead = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
     if (!user) return
 
     const { error } = await supabase
