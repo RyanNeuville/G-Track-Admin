@@ -9,8 +9,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'G-Track Admin',
-  description: 'Système de gestion et de suivi des livraisons - Admin Dashboard',
+  title: 'Glotelho Logistics - Admin',
+  description: 'Système de gestion et de suivi des livraisons Glotelho Cameroun',
   generator: 'v0.app',
   icons: {
     icon: [

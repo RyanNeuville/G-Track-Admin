@@ -69,7 +69,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">G-Track Admin</CardTitle>
+            <CardTitle className="text-2xl">Glotelho Admin</CardTitle>
             <CardDescription>
               Connectez-vous à votre compte administrateur
             </CardDescription>

@@ -111,7 +111,7 @@ export default function ReportsPage() {
           Rapports
         </h1>
         <p className="text-muted-foreground">
-          Générez et exportez les rapports réels basés sur Supabase
+          Générez et exportez les rapports opérationnels pour Glotelho Logistics
         </p>
       </div>
 

@@ -186,7 +186,7 @@ export default function UsersPage() {
                 <Input 
                   id="email" 
                   type="email"
-                  placeholder="Ex: s.martin@g-track.com" 
+                  placeholder="Ex: s.martin@glotelho.cm" 
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   required 
@@ -196,7 +196,7 @@ export default function UsersPage() {
                 <Label htmlFor="telephone">Téléphone</Label>
                 <Input 
                   id="telephone" 
-                  placeholder="Ex: +33 6 12 34 56 78" 
+                  placeholder="Ex: +237 670 12 34 56" 
                   value={formData.telephone}
                   onChange={(e) => setFormData({...formData, telephone: e.target.value})}
                 />

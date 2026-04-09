@@ -84,7 +84,7 @@ export function SidebarNav() {
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       {/* Header */}
       <div className="flex h-16 items-center border-b border-sidebar-border px-6">
-        <h1 className="text-xl font-bold text-sidebar-primary">G-Track</h1>
+        <h1 className="text-xl font-bold text-sidebar-primary">Glotelho</h1>
       </div>
 
       {/* Navigation */}

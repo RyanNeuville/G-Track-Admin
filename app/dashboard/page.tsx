@@ -43,7 +43,7 @@ export default function DashboardPage() {
           Tableau de bord
         </h1>
         <p className="text-muted-foreground">
-          Bienvenue dans le système de gestion G-Track
+          Bienvenue dans le système de gestion Glotelho
         </p>
       </div>
 

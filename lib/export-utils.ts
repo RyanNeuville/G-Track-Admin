@@ -17,14 +17,14 @@ export function generatePDFReport(
   doc.setFontSize(22)
   doc.setTextColor(...PRIMARY_COLOR)
   doc.setFont('helvetica', 'bold')
-  doc.text('G-Track Logistics', 14, 20)
+  doc.text('Glotelho Logistics', 14, 20)
   
   doc.setFontSize(10)
   doc.setTextColor(100)
   doc.setFont('helvetica', 'normal')
-  doc.text('123 Avenue des Transporteurs, 75000 Paris', 14, 26)
-  doc.text('Tél : +33 1 23 45 67 89 | Email : contact@g-track.com', 14, 31)
-  doc.text('SIRET : 123 456 789 00010', 14, 36)
+  doc.text('Rue Njo-Njo, Akwa, Douala, Cameroun', 14, 26)
+  doc.text('Tél : +237 233 43 00 00 | Email : contact@glotelho.cm', 14, 31)
+  doc.text('NIU : M050500001234', 14, 36)
 
   // Ligne de séparation
   doc.setDrawColor(...PRIMARY_COLOR)
@@ -85,7 +85,7 @@ export function generatePDFReport(
       const pageSize = doc.internal.pageSize || { width: 210, height: 297 }
       const pageHeight = doc.internal.pageSize.getHeight() ? doc.internal.pageSize.getHeight() : pageSize.height
       doc.text(str, data.settings.margin.left, pageHeight - 10)
-      doc.text('© G-Track Logistics. Document confidentiel.', 120, pageHeight - 10)
+      doc.text('© Glotelho Logistics. Document confidentiel.', 120, pageHeight - 10)
     }
   })
   
