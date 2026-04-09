@@ -22,7 +22,7 @@ export async function GET() {
     poids: `${pkg.weight} kg`,
     statut: pkg.status,
     dateCreation: new Date(pkg.created_at).toLocaleDateString('fr-FR'),
-    valeur: 'A préciser', // This field isn't in the DB schema yet
+    valeur: pkg.declared_value || 0,
   }))
 
   return NextResponse.json(formattedPackages)
@@ -36,13 +36,14 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from('packages')
     .insert([{
-      tracking_number: `FR-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+      tracking_number: `GLO-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
       recipient_name: body.destinataire,
       recipient_address: body.adresse,
       weight: parseFloat(body.poids),
+      declared_value: parseFloat(body.valeur) || 0,
       status: 'en attente',
-      sender_name: 'Expéditeur par défaut', // Required in schema but not provided by mock frontend yet
-      sender_address: 'Adresse par défaut',
+      sender_name: 'Expéditeur par défaut',
+      sender_address: 'Douala, Cameroun',
     }])
     .select()
     .single()
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
     poids: `${data.weight} kg`,
     statut: data.status,
     dateCreation: new Date(data.created_at).toLocaleDateString('fr-FR'),
-    valeur: 'A préciser',
+    valeur: data.declared_value || 0,
   }
 
   return NextResponse.json(formattedPackage, { status: 201 })

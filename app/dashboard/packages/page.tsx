@@ -4,11 +4,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/data-table'
 import { ColumnDef } from '@tanstack/react-table'
-import { Plus, Eye, Trash2, Loader2, UserPlus } from 'lucide-react'
+import { Plus, Eye, Trash2, Loader2, UserPlus, Edit } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useState, useEffect } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -22,7 +32,7 @@ interface Package {
   poids: string
   statut: string
   dateCreation: string
-  valeur: string
+  valeur: number
 }
 
 interface Driver {
@@ -30,24 +40,36 @@ interface Driver {
   nom: string
 }
 
+const CAMEROON_CITIES = [
+  'Douala', 'Yaoundé', 'Bafoussam', 'Garoua', 'Maroua', 
+  'Bamenda', 'Buea', 'Kribi', 'Edea', 'Bertoua'
+]
+
 export default function PackagesPage() {
   const [packages, setPackages] = useState<Package[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   const [isAssigning, setIsAssigning] = useState(false)
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null)
   
   // Form States
   const [isAddOpen, setIsAddOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
   const [isAssignOpen, setIsAssignOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+  const [packageToDelete, setPackageToDelete] = useState<Package | null>(null)
   const [selectedDriverId, setSelectedDriverId] = useState<string>('')
   
   const [formData, setFormData] = useState({
     destinataire: '',
-    adresse: '',
-    poids: ''
+    ville: 'Douala',
+    adresse_precise: '',
+    poids: '',
+    valeur: ''
   })
 
   const fetchPackages = async () => {
@@ -84,10 +106,14 @@ export default function PackagesPage() {
     e.preventDefault()
     setIsAdding(true)
     try {
+      const fullAddress = `${formData.adresse_precise}, ${formData.ville}`
       const response = await fetch('/api/packages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          adresse: fullAddress
+        })
       })
 
       if (!response.ok) throw new Error('Erreur API')
@@ -95,12 +121,55 @@ export default function PackagesPage() {
       const newPackage = await response.json()
       setPackages([newPackage, ...packages])
       setIsAddOpen(false)
-      setFormData({ destinataire: '', adresse: '', poids: '' })
+      setFormData({ destinataire: '', ville: 'Douala', adresse_precise: '', poids: '', valeur: '' })
       toast.success('Colis ajouté avec succès')
     } catch (error) {
       toast.error("Erreur lors de l'ajout du colis")
     } finally {
       setIsAdding(false)
+    }
+  }
+
+  const handleEditPackage = (pkg: Package) => {
+    const [precise, ville] = pkg.adresse.includes(',') 
+      ? pkg.adresse.split(',').map(s => s.trim()) 
+      : [pkg.adresse, 'Douala']
+      
+    setSelectedPackage(pkg)
+    setFormData({
+      destinataire: pkg.destinataire,
+      ville: ville || 'Douala',
+      adresse_precise: precise,
+      poids: pkg.poids.replace(' kg', ''),
+      valeur: String(pkg.valeur)
+    })
+    setIsEditOpen(true)
+  }
+
+  const handleUpdatePackage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedPackage) return
+    setIsUpdating(true)
+    try {
+      const fullAddress = `${formData.adresse_precise}, ${formData.ville}`
+      const response = await fetch(`/api/packages/${selectedPackage.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          adresse: fullAddress
+        })
+      })
+
+      if (!response.ok) throw new Error('Erreur API')
+      
+      toast.success('Colis mis à jour')
+      setIsEditOpen(false)
+      fetchPackages()
+    } catch (error) {
+      toast.error("Erreur lors de la mise à jour")
+    } finally {
+      setIsUpdating(false)
     }
   }
 
@@ -130,23 +199,25 @@ export default function PackagesPage() {
     }
   }
 
-  const handleDeletePackage = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce colis ?')) return
+  const handleDeletePackage = async () => {
+    if (!packageToDelete) return
     
-    setIsDeletingId(id)
+    setIsDeletingId(packageToDelete.id)
     try {
-      const response = await fetch(`/api/packages/${id}`, {
+      const response = await fetch(`/api/packages/${packageToDelete.id}`, {
         method: 'DELETE',
       })
 
       if (!response.ok) throw new Error('Erreur API')
       
-      setPackages(packages.filter(p => p.id !== id))
+      setPackages(packages.filter(p => p.id !== packageToDelete.id))
       toast.success('Colis supprimé avec succès')
+      setIsDeleteOpen(false)
     } catch (error) {
       toast.error('Erreur lors de la suppression')
     } finally {
       setIsDeletingId(null)
+      setPackageToDelete(null)
     }
   }
 
@@ -166,6 +237,14 @@ export default function PackagesPage() {
     {
       accessorKey: 'poids',
       header: 'Poids',
+    },
+    {
+      accessorKey: 'valeur',
+      header: 'Valeur (FCFA)',
+      cell: ({ row }) => {
+        const val = row.getValue('valeur') as number
+        return <span>{val.toLocaleString()} FCFA</span>
+      }
     },
     {
       accessorKey: 'statut',
@@ -212,15 +291,25 @@ export default function PackagesPage() {
             >
               <UserPlus className="h-4 w-4" />
             </Button>
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-              <Eye className="h-4 w-4" />
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-8 w-8 p-0"
+              onClick={() => handleEditPackage(pkg)}
+              title="Modifier"
+            >
+              <Edit className="h-4 w-4" />
             </Button>
             <Button 
               size="sm" 
               variant="ghost" 
               className="h-8 w-8 p-0 text-destructive"
-              onClick={() => handleDeletePackage(pkg.id)}
+              onClick={() => {
+                setPackageToDelete(pkg)
+                setIsDeleteOpen(true)
+              }}
               disabled={isDeletingId === pkg.id}
+              title="Supprimer"
             >
               {isDeletingId === pkg.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             </Button>
@@ -238,7 +327,7 @@ export default function PackagesPage() {
             Colis
           </h1>
           <p className="text-muted-foreground">
-            Gérez les colis et assignez-les aux livreurs
+            Gérez les colis Glotelho et assignez-les aux livreurs
           </p>
         </div>
         
@@ -253,7 +342,7 @@ export default function PackagesPage() {
             <DialogHeader>
               <DialogTitle>Ajouter un colis</DialogTitle>
               <DialogDescription>
-                Créez un nouveau colis. Le numéro de suivi sera généré automatiquement.
+                Créez un nouveau colis. Le numéro de suivi GLO sera généré automatiquement.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddPackage} className="space-y-4 py-4">
@@ -267,28 +356,59 @@ export default function PackagesPage() {
                   required 
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="adresse">Adresse de livraison</Label>
-                <Input 
-                  id="adresse" 
-                  placeholder="Ex: 123 Rue de la République, 75001 Paris" 
-                  value={formData.adresse}
-                  onChange={(e) => setFormData({...formData, adresse: e.target.value})}
-                  required 
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Ville (Cameroun)</Label>
+                  <Select 
+                    value={formData.ville} 
+                    onValueChange={(v) => setFormData({...formData, ville: v})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir une ville" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CAMEROON_CITIES.map(city => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="adresse_precise">Adresse précise</Label>
+                  <Input 
+                    id="adresse_precise" 
+                    placeholder="Ex: Akwa, Rue Njo-Njo" 
+                    value={formData.adresse_precise}
+                    onChange={(e) => setFormData({...formData, adresse_precise: e.target.value})}
+                    required 
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="poids">Poids (kg)</Label>
-                <Input 
-                  id="poids" 
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  placeholder="Ex: 2.5" 
-                  value={formData.poids}
-                  onChange={(e) => setFormData({...formData, poids: e.target.value})}
-                  required 
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="poids">Poids (kg)</Label>
+                  <Input 
+                    id="poids" 
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    placeholder="Ex: 2.5" 
+                    value={formData.poids}
+                    onChange={(e) => setFormData({...formData, poids: e.target.value})}
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="valeur">Valeur marchande (FCFA)</Label>
+                  <Input 
+                    id="valeur" 
+                    type="number"
+                    placeholder="Ex: 50000" 
+                    value={formData.valeur}
+                    onChange={(e) => setFormData({...formData, valeur: e.target.value})}
+                    required 
+                  />
+                </div>
               </div>
               <DialogFooter className="pt-4">
                 <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)} disabled={isAdding}>
@@ -296,7 +416,7 @@ export default function PackagesPage() {
                 </Button>
                 <Button type="submit" disabled={isAdding}>
                   {isAdding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Ajouter
+                  Ajouter le colis
                 </Button>
               </DialogFooter>
             </form>
@@ -323,6 +443,85 @@ export default function PackagesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog d'édition */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier le colis {selectedPackage?.numero}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdatePackage} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-destinataire">Destinataire</Label>
+              <Input 
+                id="edit-destinataire" 
+                value={formData.destinataire}
+                onChange={(e) => setFormData({...formData, destinataire: e.target.value})}
+                required 
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Ville</Label>
+                <Select 
+                  value={formData.ville} 
+                  onValueChange={(v) => setFormData({...formData, ville: v})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CAMEROON_CITIES.map(city => (
+                      <SelectItem key={city} value={city}>{city}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-adresse">Adresse précise</Label>
+                <Input 
+                  id="edit-adresse" 
+                  value={formData.adresse_precise}
+                  onChange={(e) => setFormData({...formData, adresse_precise: e.target.value})}
+                  required 
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="edit-poids">Poids (kg)</Label>
+                <Input 
+                  id="edit-poids" 
+                  type="number"
+                  step="0.1"
+                  value={formData.poids}
+                  onChange={(e) => setFormData({...formData, poids: e.target.value})}
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-valeur">Valeur (FCFA)</Label>
+                <Input 
+                  id="edit-valeur" 
+                  type="number"
+                  value={formData.valeur}
+                  onChange={(e) => setFormData({...formData, valeur: e.target.value})}
+                  required 
+                />
+              </div>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)} disabled={isUpdating}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={isUpdating}>
+                {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Enregistrer les modifications
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog d'assignation */}
       <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
@@ -367,6 +566,31 @@ export default function PackagesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AlertDialog de suppression */}
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer le colis <strong>{packageToDelete?.numero}</strong> ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingId !== null}>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault()
+                handleDeletePackage()
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeletingId !== null}
+            >
+              {isDeletingId !== null ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer définitivement"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
