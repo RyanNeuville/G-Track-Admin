@@ -100,7 +100,7 @@ export default function UsersPage() {
         const role = row.getValue('role') as string
         return (
           <Badge variant="outline" className="capitalize">
-            {role === 'admin' ? 'Administrateur' : role === 'driver' ? 'Chauffeur' : role}
+            {role === 'Administrateur' ? 'Administrateur' : role === 'Chauffeur' ? 'Chauffeur' : role}
           </Badge>
         )
       },

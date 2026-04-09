@@ -4,13 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/data-table'
 import { ColumnDef } from '@tanstack/react-table'
-import { Plus, Eye, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Eye, Trash2, Loader2, UserPlus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useState, useEffect } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 
 interface Package {
@@ -24,14 +25,25 @@ interface Package {
   valeur: string
 }
 
+interface Driver {
+  id: string
+  nom: string
+}
+
 export default function PackagesPage() {
   const [packages, setPackages] = useState<Package[]>([])
+  const [drivers, setDrivers] = useState<Driver[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
+  const [isAssigning, setIsAssigning] = useState(false)
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null)
   
-  // Form State
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  // Form States
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [isAssignOpen, setIsAssignOpen] = useState(false)
+  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('')
+  
   const [formData, setFormData] = useState({
     destinataire: '',
     adresse: '',
@@ -46,13 +58,26 @@ export default function PackagesPage() {
     } catch (error) {
       console.error('Erreur:', error)
       toast.error('Erreur lors du chargement des colis')
-    } finally {
-      setIsLoading(false)
+    }
+  }
+
+  const fetchDrivers = async () => {
+    try {
+      const response = await fetch('/api/drivers')
+      const data = await response.json()
+      setDrivers(data)
+    } catch (error) {
+      console.error('Erreur:', error)
     }
   }
 
   useEffect(() => {
-    fetchPackages()
+    const init = async () => {
+      setIsLoading(true)
+      await Promise.all([fetchPackages(), fetchDrivers()])
+      setIsLoading(false)
+    }
+    init()
   }, [])
 
   const handleAddPackage = async (e: React.FormEvent) => {
@@ -69,13 +94,39 @@ export default function PackagesPage() {
       
       const newPackage = await response.json()
       setPackages([newPackage, ...packages])
-      setIsDialogOpen(false)
+      setIsAddOpen(false)
       setFormData({ destinataire: '', adresse: '', poids: '' })
       toast.success('Colis ajouté avec succès')
     } catch (error) {
       toast.error("Erreur lors de l'ajout du colis")
     } finally {
       setIsAdding(false)
+    }
+  }
+
+  const handleAssignPackage = async () => {
+    if (!selectedPackage || !selectedDriverId) return
+    setIsAssigning(true)
+    try {
+      const response = await fetch('/api/packages/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          packageId: selectedPackage.id,
+          driverId: selectedDriverId,
+          region: selectedPackage.adresse.split(',').pop()?.trim() || 'Locale'
+        })
+      })
+
+      if (!response.ok) throw new Error('Erreur assignation')
+      
+      toast.success('Colis assigné au livreur')
+      setIsAssignOpen(false)
+      fetchPackages() // Refresh to show new status
+    } catch (error) {
+      toast.error("Erreur lors de l'assignation")
+    } finally {
+      setIsAssigning(false)
     }
   }
 
@@ -145,20 +196,33 @@ export default function PackagesPage() {
     {
       id: 'actions',
       cell: ({ row }) => {
-        const id = row.original.id
+        const pkg = row.original
         return (
           <div className="flex gap-2">
-            <Button size="sm" variant="ghost">
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => {
+                setSelectedPackage(pkg)
+                setIsAssignOpen(true)
+              }}
+              title="Assigner à un livreur"
+              disabled={pkg.statut.toLowerCase() === 'livré'}
+            >
+              <UserPlus className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
               <Eye className="h-4 w-4" />
             </Button>
             <Button 
               size="sm" 
               variant="ghost" 
-              className="text-destructive"
-              onClick={() => handleDeletePackage(id)}
-              disabled={isDeletingId === id}
+              className="h-8 w-8 p-0 text-destructive"
+              onClick={() => handleDeletePackage(pkg.id)}
+              disabled={isDeletingId === pkg.id}
             >
-              {isDeletingId === id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {isDeletingId === pkg.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             </Button>
           </div>
         )
@@ -174,11 +238,11 @@ export default function PackagesPage() {
             Colis
           </h1>
           <p className="text-muted-foreground">
-            Gérez les colis en transit et en attente
+            Gérez les colis et assignez-les aux livreurs
           </p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
             <Button disabled={isLoading}>
               <Plus className="h-4 w-4 mr-2" />
@@ -227,7 +291,7 @@ export default function PackagesPage() {
                 />
               </div>
               <DialogFooter className="pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isAdding}>
+                <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)} disabled={isAdding}>
                   Annuler
                 </Button>
                 <Button type="submit" disabled={isAdding}>
@@ -259,6 +323,50 @@ export default function PackagesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog d'assignation */}
+      <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assigner un livreur</DialogTitle>
+            <DialogDescription>
+              Choisissez le livreur responsable du colis <strong>{selectedPackage?.numero}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Livreur (Chauffeur actif)</Label>
+              <Select onValueChange={setSelectedDriverId} value={selectedDriverId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un livreur" />
+                </SelectTrigger>
+                <SelectContent>
+                  {drivers.length > 0 ? (
+                    drivers.map((driver) => (
+                      <SelectItem key={driver.id} value={driver.id}>
+                        {driver.nom}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-sm text-muted-foreground text-center">
+                      Aucun livreur actif disponible
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAssignOpen(false)} disabled={isAssigning}>
+              Annuler
+            </Button>
+            <Button onClick={handleAssignPackage} disabled={!selectedDriverId || isAssigning}>
+              {isAssigning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmer l'assignation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -42,11 +42,6 @@ const menuItems = [
     icon: Truck,
   },
   {
-    label: 'Itinéraires',
-    href: '/dashboard/routes',
-    icon: MapPin,
-  },
-  {
     label: 'Suivi temps réel',
     href: '/dashboard/tracking',
     icon: Navigation,

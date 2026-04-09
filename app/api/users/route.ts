@@ -17,11 +17,11 @@ export async function GET() {
     id: profile.id,
     nom: profile.full_name,
     email: profile.email,
-    role: profile.role,
+    role: profile.role === 'Administrateur' ? 'admin' : (profile.role === 'Chauffeur' ? 'driver' : profile.role),
     statut: profile.status,
     telephone: profile.phone,
     dateEmbauche: new Date(profile.created_at).toISOString().split('T')[0],
-    livraisons: 0, // Would need a join/count to be accurate
+    livraisons: 0, 
   }))
 
   return NextResponse.json(formattedUsers)
@@ -31,14 +31,15 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const body = await request.json()
   
-  // Note: For a real app, you'd use supabase.auth.admin.createUser 
-  // but here we just insert into the profiles table for the simulation transition
+  // Mapping roles to DB constraints: 'Administrateur', 'Chauffeur'
+  const dbRole = body.role === 'admin' ? 'Administrateur' : 'Chauffeur'
+  
   const { data, error } = await supabase
     .from('profiles')
     .insert([{
       full_name: body.nom,
       email: body.email,
-      role: body.role,
+      role: dbRole,
       phone: body.telephone,
       status: 'actif',
     }])

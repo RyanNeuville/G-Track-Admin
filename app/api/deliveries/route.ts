@@ -5,9 +5,10 @@ export async function GET() {
   const supabase = await createClient()
   
   const { data, error } = await supabase
-    .from('routes')
+    .from('deliveries')
     .select(`
       *,
+      packages (*),
       drivers (
         profiles (
           full_name
@@ -20,18 +21,17 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const formattedDeliveries = data.map((route: any) => ({
-    id: route.id,
-    numero: `TOUR-${new Date(route.delivery_date).getFullYear()}-${route.id.slice(0, 3).toUpperCase()}`,
-    chauffeur: route.drivers?.profiles?.full_name || 'Non assigné',
-    date: route.delivery_date,
-    colis: route.total_deliveries,
-    distance: `${route.total_distance} km`,
-    statut: route.status === 'in_progress' ? 'en cours' : (route.status === 'completed' ? 'terminée' : 'en attente'),
-    heure_depart: route.created_at ? new Date(route.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
+  const formattedDeliveries = data.map((delivery: any) => ({
+    id: delivery.id,
+    numero: `LIV-${new Date(delivery.delivery_date).getFullYear()}-${delivery.id.slice(0, 3).toUpperCase()}`,
+    chauffeur: delivery.drivers?.profiles?.full_name || 'Non assigné',
+    date: delivery.delivery_date,
+    colis: delivery.packages?.tracking_number || 'N/A',
+    distance: `${delivery.distance_km || 0} km`,
+    statut: delivery.status === 'in_transit' ? 'en cours' : (delivery.status === 'delivered' ? 'terminée' : 'en attente'),
+    heure_depart: delivery.pickup_time ? new Date(delivery.pickup_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
     heure_prevue: '18:00',
-    livraisons_reussies: route.completed_deliveries,
-    region: route.region,
+    region: delivery.region || 'Locale',
   }))
 
   return NextResponse.json(formattedDeliveries)
