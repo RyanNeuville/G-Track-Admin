@@ -1,0 +1,25 @@
+@startuml
+title Cas 2 : Envoi de position du livreur
+
+actor Livreur
+participant "App Flutter (Livreur)" as AppLivreur
+participant "Service GPS" as GPS
+participant "Supabase Backend" as Supabase
+
+== Démarrage livraison ==
+Livreur -> AppLivreur : Démarrer livraison
+
+loop Toutes les 5 secondes
+    AppLivreur -> GPS : Demander position actuelle
+    GPS --> AppLivreur : Coordonnées GPS
+
+    AppLivreur -> Supabase : POST /update-position
+    Supabase --> AppLivreur : Confirmation
+end
+
+== Fin livraison ==
+Livreur -> AppLivreur : Marquer comme livré
+AppLivreur -> Supabase : UPDATE statut = livré
+Supabase --> AppLivreur : Confirmation
+
+@enduml

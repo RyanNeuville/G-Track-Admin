@@ -1,0 +1,25 @@
+@startuml
+title Cas 1 : Suivi en temps réel du colis (Client)
+
+actor Client
+participant "App Flutter (Client)" as AppClient
+participant "Supabase Backend" as Supabase
+participant "App Flutter (Livreur)" as AppLivreur
+
+== Ouverture et récupération initiale ==
+Client -> AppClient : Ouvrir application
+Client -> AppClient : Sélectionner colis
+AppClient -> Supabase : GET /colis/{id}
+Supabase --> AppClient : Données colis (statut + position)
+
+== Abonnement temps réel ==
+AppClient -> Supabase : Subscribe (Realtime updates)
+
+== Mise à jour en temps réel ==
+loop Temps réel
+    AppLivreur -> Supabase : UPDATE position colis
+    Supabase --> AppClient : Nouvelle position (Realtime)
+    AppClient -> Client : Mise à jour carte
+end
+
+@enduml
