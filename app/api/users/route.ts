@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     
     const dbRole = body.role === 'admin' ? 'Administrateur' : 'Chauffeur'
     
-    // 1. Create the Auth user first (Bypasses email confirmation for admins)
+    // Create the Auth user. The DB Trigger (handle_new_user) will automatically create the profile.
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: body.email,
       password: 'GTrack' + Math.random().toString(36).slice(-8) + '!',
@@ -49,35 +49,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Auth Error: ${authError.message}` }, { status: 400 })
     }
 
-    // 2. Insert into the profiles table (using the auth user id)
-    // Note: If you have a trigger in SQL, this might not be needed, but we do it manually to be safe
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert([{
-        id: authData.user.id,
-        full_name: body.nom,
-        email: body.email,
-        role: dbRole,
-        phone: body.telephone,
-        status: 'actif',
-      }])
-      .select()
-      .single()
-
-    if (error) {
-      // Cleanup auth user if profile insert fails
-      await supabase.auth.admin.deleteUser(authData.user.id)
-      return NextResponse.json({ error: `Profile Error: ${error.message}` }, { status: 500 })
-    }
-
+    // Since a trigger handles the profile, we don't need to manually insert.
+    // We return the formatted object based on what we just created.
     const formattedUser = {
-      id: data.id,
-      nom: data.full_name,
-      email: data.email,
-      role: body.role, // Return frontend-style role
-      statut: data.status,
-      telephone: data.phone,
-      dateEmbauche: new Date(data.created_at).toISOString().split('T')[0],
+      id: authData.user.id,
+      nom: body.nom,
+      email: body.email,
+      role: body.role,
+      statut: 'actif',
+      telephone: body.telephone || '',
+      dateEmbauche: new Date().toISOString().split('T')[0],
       livraisons: 0,
     }
 
