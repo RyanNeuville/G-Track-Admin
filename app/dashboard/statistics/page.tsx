@@ -65,7 +65,7 @@ export default function StatisticsPage() {
               <Tooltip />
               <Legend />
               <Bar dataKey="deliveries" fill="#2ECC71" name="Livraisons" />
-              <Bar dataKey="revenue" fill="#5DADE2" name="Revenus (€)" />
+              <Bar dataKey="revenue" fill="#5DADE2" name="Revenus (FCFA)" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -155,10 +155,10 @@ export default function StatisticsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Chauffeurs actifs</CardTitle>
+            <CardTitle className="text-sm font-medium">Livreurs actifs</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.summary.active_drivers}</div>
+            <div className="text-2xl font-bold">{data.summary.active_livreurs}</div>
             <p className="text-xs text-muted-foreground">En ligne actuellement</p>
           </CardContent>
         </Card>

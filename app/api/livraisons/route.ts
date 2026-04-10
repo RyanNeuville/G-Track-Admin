@@ -5,10 +5,9 @@ export async function GET() {
   const supabase = await createAdminClient()
   
   const { data, error } = await supabase
-    .from('livraisons')
+    .from('itineraires')
     .select(`
       *,
-      colis (*),
       livreurs (
         profils (
           nom_complet
@@ -21,17 +20,15 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const formattedDeliveries = (data || []).map((delivery: any) => ({
-    id: delivery.id,
-    numero: `LIV-${new Date(delivery.date_livraison).getFullYear()}-${delivery.id.slice(0, 3).toUpperCase()}`,
-    chauffeur: delivery.livreurs?.profils?.nom_complet || 'Non assigné',
-    date: delivery.date_livraison,
-    colis: delivery.colis?.numero_suivi || 'N/A',
-    distance: `${delivery.distance_km || 0} km`,
-    statut: delivery.statut === 'en_cours' ? 'en cours' : (delivery.statut === 'terminee' ? 'terminée' : 'en attente'),
-    heure_depart: delivery.heure_ramassage ? new Date(delivery.heure_ramassage).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
-    heure_prevue: '18:00',
-    region: delivery.region || 'Locale',
+  const formattedDeliveries = (data || []).map((itin: any) => ({
+    id: itin.id,
+    numero: `LIV-${new Date(itin.date_livraison).getFullYear()}-${itin.id.toString().slice(0, 3).toUpperCase()}`,
+    chauffeur: itin.livreurs?.profils?.nom_complet || 'En attente',
+    date: itin.date_livraison,
+    colis: itin.total_livraisons || 0,
+    distance: `${itin.distance_totale || 0} km`,
+    statut: itin.statut === 'en_cours' ? 'en cours' : (itin.statut === 'terminee' ? 'terminée' : 'en attente'),
+    region: itin.region || 'Locale',
   }))
 
   return NextResponse.json(formattedDeliveries)

@@ -34,21 +34,31 @@ ALTER TABLE public.livreurs RENAME COLUMN status TO statut;
 ALTER TABLE IF EXISTS public.deliveries RENAME TO livraisons;
 ALTER TABLE public.livraisons RENAME COLUMN package_id TO id_colis;
 ALTER TABLE public.livraisons RENAME COLUMN driver_id TO id_livreur;
-ALTER TABLE public.livreisons RENAME COLUMN delivery_date TO date_livraison;
+ALTER TABLE public.livraisons RENAME COLUMN delivery_date TO date_livraison;
 ALTER TABLE public.livraisons RENAME COLUMN pickup_time TO heure_ramassage;
 ALTER TABLE public.livraisons RENAME COLUMN delivery_time TO heure_livraison;
 ALTER TABLE public.livraisons RENAME COLUMN status TO statut;
--- region et notes restent region et notes (ou notes -> notes)
 ALTER TABLE public.livraisons RENAME COLUMN notes TO remarques;
 
--- 5. Renommage de la table statistics -> statistiques
+-- 5. Renommage de la table routes -> itineraires
+ALTER TABLE IF EXISTS public.routes RENAME TO itineraires;
+ALTER TABLE public.itineraires RENAME COLUMN driver_id TO id_livreur;
+ALTER TABLE public.itineraires RENAME COLUMN delivery_date TO date_livraison;
+ALTER TABLE public.itineraires RENAME COLUMN total_distance TO distance_totale;
+ALTER TABLE public.itineraires RENAME COLUMN total_deliveries TO total_livraisons;
+ALTER TABLE public.itineraires RENAME COLUMN completed_deliveries TO livraisons_terminees;
+ALTER TABLE public.itineraires RENAME COLUMN status TO statut;
+ALTER TABLE public.itineraires RENAME COLUMN estimated_duration_minutes TO duree_estimee_minutes;
+ALTER TABLE public.itineraires RENAME COLUMN actual_duration_minutes TO duree_reelle_minutes;
+
+-- 6. Renommage de la table statistiques
 ALTER TABLE IF EXISTS public.statistics RENAME TO statistiques;
 ALTER TABLE public.statistiques RENAME COLUMN total_deliveries TO total_livraisons;
 ALTER TABLE public.statistiques RENAME COLUMN completed_deliveries TO livraisons_terminees;
 ALTER TABLE public.statistiques RENAME COLUMN pending_deliveries TO livraisons_en_attente;
 ALTER TABLE public.statistiques RENAME COLUMN total_distance TO distance_totale;
 
--- 6. Renommage de la table notifications -> notifications (reste pareil)
+-- 7. Renommage de la table notifications
 ALTER TABLE public.notifications RENAME COLUMN user_id TO id_utilisateur;
 ALTER TABLE public.notifications RENAME COLUMN title TO titre;
 ALTER TABLE public.notifications RENAME COLUMN is_read TO lu;
@@ -62,7 +72,7 @@ BEGIN
     new.id,
     new.email,
     new.raw_user_meta_data->>'full_name',
-    COALESCE(new.raw_user_meta_data->>'role', 'Chauffeur'),
+    COALESCE(new.raw_user_meta_data->>'role', 'Livreur'),
     'actif'
   );
   RETURN new;

@@ -35,7 +35,7 @@ export async function GET() {
       total_deliveries: totalPackages || 0,
       completed: completedPackages || 0,
       pending: pendingPackages || 0,
-      active_drivers: activeDrivers || 0,
+      active_livreurs: activeDrivers || 0,
       total_distance: `${totalDistance.toFixed(1)} km`,
       average_time: 'A calculer',
     },
