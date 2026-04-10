@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 export async function GET() {
-  const supabase = await createClient()
+  const supabase = await createAdminClient()
 
   // Fetch counts from different tables
   const [
@@ -13,20 +13,20 @@ export async function GET() {
     { data: routesData },
     { data: statusData }
   ] = await Promise.all([
-    supabase.from('packages').select('*', { count: 'exact', head: true }),
-    supabase.from('packages').select('*', { count: 'exact', head: true }).eq('status', 'livré'),
-    supabase.from('packages').select('*', { count: 'exact', head: true }).in('status', ['en attente', 'en transit']),
-    supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('status', 'actif'),
-    supabase.from('routes').select('total_distance, region'),
-    supabase.from('packages').select('status')
+    supabase.from('colis').select('*', { count: 'exact', head: true }),
+    supabase.from('colis').select('*', { count: 'exact', head: true }).eq('statut', 'livré'),
+    supabase.from('colis').select('*', { count: 'exact', head: true }).in('statut', ['en attente', 'en transit']),
+    supabase.from('livreurs').select('*', { count: 'exact', head: true }).eq('statut', 'actif'),
+    supabase.from('itineraires').select('distance_totale, region'),
+    supabase.from('colis').select('statut')
   ])
 
   // Calculate total distance
-  const totalDistance = routesData?.reduce((acc, route) => acc + (Number(route.total_distance) || 0), 0) || 0
+  const totalDistance = routesData?.reduce((acc, route) => acc + (Number(route.distance_totale) || 0), 0) || 0
 
   // Calculate status breakdown
   const statusCounts = (statusData || []).reduce((acc: any, pkg: any) => {
-    acc[pkg.status] = (acc[pkg.status] || 0) + 1
+    acc[pkg.statut] = (acc[pkg.statut] || 0) + 1
     return acc
   }, {})
 
@@ -35,7 +35,7 @@ export async function GET() {
       total_deliveries: totalPackages || 0,
       completed: completedPackages || 0,
       pending: pendingPackages || 0,
-      active_drivers: activeDrivers || 0,
+      active_livreurs: activeDrivers || 0,
       total_distance: `${totalDistance.toFixed(1)} km`,
       average_time: 'A calculer',
     },

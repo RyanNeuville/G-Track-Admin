@@ -42,7 +42,7 @@ export default function DeliveriesPage() {
 
   const fetchDeliveries = async () => {
     try {
-      const response = await fetch('/api/deliveries')
+      const response = await fetch('/api/livraisons')
       const data = await response.json()
       setDeliveries(data)
     } catch (error) {
@@ -61,7 +61,7 @@ export default function DeliveriesPage() {
     e.preventDefault()
     setIsAdding(true)
     try {
-      const response = await fetch('/api/deliveries', {
+      const response = await fetch('/api/livraisons', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -90,7 +90,7 @@ export default function DeliveriesPage() {
     
     setIsDeletingId(id)
     try {
-      const response = await fetch(`/api/deliveries/${id}`, {
+      const response = await fetch(`/api/livraisons/${id}`, {
         method: 'DELETE',
       })
 
@@ -112,7 +112,7 @@ export default function DeliveriesPage() {
     },
     {
       accessorKey: 'chauffeur',
-      header: 'Chauffeur',
+      header: 'Livreur',
     },
     {
       accessorKey: 'date',

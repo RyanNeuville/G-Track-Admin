@@ -45,7 +45,7 @@ const mockNotifications: Notification[] = [
   {
     id: '4',
     type: 'success',
-    title: 'Chauffeur connecté',
+    title: 'Livreur connecté',
     message: 'Pierre Bernard s\'est connecté au système',
     timestamp: new Date(Date.now() - 1 * 3600000),
     read: true,

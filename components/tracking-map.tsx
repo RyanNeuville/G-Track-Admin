@@ -25,29 +25,29 @@ export function TrackingMap() {
 
   const fetchDrivers = async () => {
     const { data, error } = await supabase
-      .from('drivers')
+      .from('livreurs')
       .select(`
         id,
-        status,
+        statut,
         latitude,
         longitude,
-        profiles (
-          full_name
+        profils (
+          nom_complet
         )
       `)
 
     if (error) {
-      console.error('Error fetching drivers:', error)
+      console.error('Error fetching livreurs:', error)
       return
     }
 
     const formattedDrivers: Driver[] = data.map((d: any) => ({
       id: d.id,
-      nom: d.profiles?.full_name || 'Anonyme',
-      lat: Number(d.latitude) || 48.8566,
-      lng: Number(d.longitude) || 2.3522,
-      statut: d.status,
-      colis: 0, // Would need another join for active deliveries
+      nom: d.profils?.nom_complet || 'Anonyme',
+      lat: Number(d.latitude) || 4.05, // Default to Douala
+      lng: Number(d.longitude) || 9.7,
+      statut: d.statut,
+      colis: 0,
     }))
 
     setDrivers(formattedDrivers)
@@ -56,8 +56,8 @@ export function TrackingMap() {
   useEffect(() => {
     if (!mapContainer.current) return
 
-    // Initialize map
-    map.current = L.map(mapContainer.current).setView([48.8566, 2.3522], 11)
+    // Initialize map centered on Douala
+    map.current = L.map(mapContainer.current).setView([4.05, 9.7], 13)
 
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -69,16 +69,16 @@ export function TrackingMap() {
 
     // Real-time subscription
     const channel = supabase
-      .channel('drivers-location')
+      .channel('livreurs-location')
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'drivers' },
+        { event: 'UPDATE', schema: 'public', table: 'livreurs' },
         (payload) => {
           const updatedDriver = payload.new as any
           setDrivers((prev) => 
             prev.map((d) => 
               d.id === updatedDriver.id 
-                ? { ...d, lat: Number(updatedDriver.latitude), lng: Number(updatedDriver.longitude), statut: updatedDriver.status }
+                ? { ...d, lat: Number(updatedDriver.latitude), lng: Number(updatedDriver.longitude), statut: updatedDriver.statut }
                 : d
             )
           )
@@ -144,7 +144,7 @@ export function TrackingMap() {
       <Card>
         <CardHeader>
           <CardTitle>Suivi en direct</CardTitle>
-          <CardDescription>Position réelle synchronisée via Supabase</CardDescription>
+          <CardDescription>Position réelle synchronisée via Supabase (Douala, Cameroun)</CardDescription>
         </CardHeader>
         <CardContent>
           <div ref={mapContainer} className="h-[500px] rounded-md border border-border" />
@@ -154,11 +154,11 @@ export function TrackingMap() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Chauffeurs connectés</CardTitle>
+            <CardTitle>Livreurs connectés</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-              {drivers.length === 0 && <p className="text-sm text-muted-foreground">Aucun chauffeur en ligne.</p>}
+              {drivers.length === 0 && <p className="text-sm text-muted-foreground">Aucun livreur en ligne.</p>}
               {drivers.map((driver) => (
                 <div
                   key={driver.id}
@@ -187,7 +187,7 @@ export function TrackingMap() {
             <CardContent>
               <div className="space-y-3">
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-sm text-muted-foreground">Chauffeur</span>
+                  <span className="text-sm text-muted-foreground">Livreur</span>
                   <span className="font-medium">{selectedDriver.nom}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">

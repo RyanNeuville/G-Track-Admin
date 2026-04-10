@@ -18,18 +18,24 @@ export default function ReportsPage() {
     const fetchData = async () => {
       try {
         const [delRes, userRes] = await Promise.all([
-          fetch('/api/deliveries'),
+          fetch('/api/livraisons'),
           fetch('/api/users')
         ])
-        const [delData, userData] = await Promise.all([
-          delRes.json(),
-          userRes.json()
-        ])
-        setDeliveries(delData)
-        setUsers(userData)
+        
+        const delData = delRes.ok ? await delRes.json() : []
+        const userData = userRes.ok ? await userRes.json() : []
+        
+        setDeliveries(Array.isArray(delData) ? delData : [])
+        setUsers(Array.isArray(userData) ? userData : [])
+        
+        if (!delRes.ok || !userRes.ok) {
+          toast.error('Certaines données n\'ont pas pu être chargées')
+        }
       } catch (error) {
         console.error('Error fetching reports data:', error)
         toast.error('Erreur lors du chargement des données')
+        setDeliveries([])
+        setUsers([])
       } finally {
         setIsLoading(false)
       }
@@ -41,10 +47,10 @@ export default function ReportsPage() {
     if (deliveries.length === 0) return toast.error('Aucune donnée à exporter')
     setIsGenerating(true)
     try {
-      const columns = ['Numéro', 'Chauffeur', 'Date', 'Colis', 'Distance', 'Statut']
+      const columns = ['Numéro', 'Livreur', 'Date', 'Colis', 'Distance', 'Statut']
       const data = deliveries.map(d => ({
         Numéro: d.numero,
-        Chauffeur: d.chauffeur,
+        Livreur: d.chauffeur,
         Date: d.date,
         Colis: d.colis,
         Distance: d.distance,
@@ -105,7 +111,7 @@ export default function ReportsPage() {
           Rapports
         </h1>
         <p className="text-muted-foreground">
-          Générez et exportez les rapports réels basés sur Supabase
+          Générez et exportez les rapports opérationnels pour Glotelho Logistics
         </p>
       </div>
 
@@ -161,7 +167,7 @@ export default function ReportsPage() {
               Rapport de performance
             </CardTitle>
             <CardDescription>
-              Statistiques des utilisateurs et chauffeurs
+              Statistiques des utilisateurs et livreurs
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -215,7 +221,7 @@ export default function ReportsPage() {
               {deliveries.slice(0, 5).map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between border-b pb-3 last:border-b-0">
                   <div>
-                    <p className="font-medium">{item.chauffeur || 'Sans chauffeur'}</p>
+                    <p className="font-medium">{item.chauffeur || 'Sans livreur'}</p>
                     <p className="text-xs text-muted-foreground">{item.date}</p>
                   </div>
                   <div className="text-right">

@@ -43,7 +43,7 @@ export default function DashboardPage() {
           Tableau de bord
         </h1>
         <p className="text-muted-foreground">
-          Bienvenue dans le système de gestion G-Track
+          Bienvenue dans le système de gestion Glotelho
         </p>
       </div>
 
@@ -94,10 +94,10 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Chauffeurs actifs</CardTitle>
+                <CardTitle className="text-sm font-medium">Livreurs actifs</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.summary.active_drivers}</div>
+                <div className="text-2xl font-bold">{stats.summary.active_livreurs}</div>
                 <p className="text-xs text-muted-foreground">En ligne maintenant</p>
               </CardContent>
             </Card>
