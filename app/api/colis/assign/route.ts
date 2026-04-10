@@ -12,12 +12,12 @@ export async function POST(request: Request) {
 
     // Assigning a package means creating a delivery record
     const { data, error } = await supabase
-      .from('deliveries')
+      .from('livraisons')
       .insert([{
-        package_id: packageId,
-        driver_id: driverId,
-        delivery_date: new Date().toISOString().split('T')[0],
-        status: 'pending',
+        id_colis: packageId,
+        id_livreur: driverId,
+        date_livraison: new Date().toISOString().split('T')[0],
+        statut: 'en_attente',
         region: region || 'Non précisée'
       }])
       .select()
@@ -29,8 +29,8 @@ export async function POST(request: Request) {
 
     // Also update package status to 'en transit'
     await supabase
-      .from('packages')
-      .update({ status: 'en transit' })
+      .from('colis')
+      .update({ statut: 'en transit' })
       .eq('id', packageId)
 
     return NextResponse.json(data, { status: 201 })

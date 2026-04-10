@@ -74,7 +74,7 @@ export default function PackagesPage() {
 
   const fetchPackages = async () => {
     try {
-      const response = await fetch('/api/packages')
+      const response = await fetch('/api/colis')
       const data = await response.json()
       setPackages(data)
     } catch (error) {
@@ -85,7 +85,7 @@ export default function PackagesPage() {
 
   const fetchDrivers = async () => {
     try {
-      const response = await fetch('/api/drivers')
+      const response = await fetch('/api/livreurs')
       const data = await response.json()
       setDrivers(data)
     } catch (error) {
@@ -107,7 +107,7 @@ export default function PackagesPage() {
     setIsAdding(true)
     try {
       const fullAddress = `${formData.adresse_precise}, ${formData.ville}`
-      const response = await fetch('/api/packages', {
+      const response = await fetch('/api/colis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -152,7 +152,7 @@ export default function PackagesPage() {
     setIsUpdating(true)
     try {
       const fullAddress = `${formData.adresse_precise}, ${formData.ville}`
-      const response = await fetch(`/api/packages/${selectedPackage.id}`, {
+      const response = await fetch(`/api/colis/${selectedPackage.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -177,7 +177,7 @@ export default function PackagesPage() {
     if (!selectedPackage || !selectedDriverId) return
     setIsAssigning(true)
     try {
-      const response = await fetch('/api/packages/assign', {
+      const response = await fetch('/api/colis/assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -204,7 +204,7 @@ export default function PackagesPage() {
     
     setIsDeletingId(packageToDelete.id)
     try {
-      const response = await fetch(`/api/packages/${packageToDelete.id}`, {
+      const response = await fetch(`/api/colis/${packageToDelete.id}`, {
         method: 'DELETE',
       })
 

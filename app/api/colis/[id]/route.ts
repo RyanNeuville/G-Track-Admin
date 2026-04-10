@@ -10,7 +10,7 @@ export async function GET(
     const { id } = await params
 
     const { data, error } = await supabase
-      .from('packages')
+      .from('colis')
       .select('*')
       .eq('id', id)
       .single()
@@ -35,13 +35,13 @@ export async function PATCH(
     const body = await request.json()
 
     const { data, error } = await supabase
-      .from('packages')
+      .from('colis')
       .update({
-        recipient_name: body.destinataire,
-        recipient_address: body.adresse,
-        weight: parseFloat(body.poids) || undefined,
-        declared_value: parseFloat(body.valeur) || undefined,
-        status: body.statut,
+        nom_destinataire: body.destinataire,
+        adresse_destinataire: body.adresse,
+        poids: parseFloat(body.poids) || undefined,
+        valeur_declaree: parseFloat(body.valeur) || undefined,
+        statut: body.statut,
       })
       .eq('id', id)
       .select()
@@ -70,7 +70,7 @@ export async function DELETE(
     }
 
     const { error } = await supabase
-      .from('packages')
+      .from('colis')
       .delete()
       .eq('id', id)
 

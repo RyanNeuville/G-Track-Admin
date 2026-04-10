@@ -16,7 +16,7 @@ export async function DELETE(
     // We can't easily delete a profile if it's referenced elsewhere (drivers, etc.)
     // but for the sake of the simulation let's try a direct delete or a soft delete
     const { error } = await supabase
-      .from('profiles')
+      .from('profils')
       .delete()
       .eq('id', id)
 

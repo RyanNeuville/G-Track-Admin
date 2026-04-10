@@ -5,7 +5,7 @@ export async function GET() {
   const supabase = await createAdminClient()
   
   const { data, error } = await supabase
-    .from('profiles')
+    .from('profils')
     .select('*')
     .order('created_at', { ascending: false })
 
@@ -15,11 +15,11 @@ export async function GET() {
 
   const formattedUsers = (data || []).map((profile: any) => ({
     id: profile.id,
-    nom: profile.full_name,
+    nom: profile.nom_complet,
     email: profile.email,
-    role: profile.role === 'Administrateur' ? 'admin' : (profile.role === 'Chauffeur' ? 'driver' : profile.role),
-    statut: profile.status,
-    telephone: profile.phone,
+    role: profile.role === 'Administrateur' ? 'admin' : (profile.role === 'Livreur' ? 'driver' : profile.role),
+    statut: profile.statut,
+    telephone: profile.telephone,
     dateEmbauche: new Date(profile.created_at).toISOString().split('T')[0],
     livraisons: 0, 
   }))
@@ -32,12 +32,12 @@ export async function POST(request: Request) {
     const supabase = await createAdminClient()
     const body = await request.json()
     
-    const dbRole = body.role === 'admin' ? 'Administrateur' : 'Chauffeur'
+    const dbRole = body.role === 'admin' ? 'Administrateur' : 'Livreur'
     
     // Create the Auth user. The DB Trigger (handle_new_user) will automatically create the profile.
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: body.email,
-      password: 'GTrack' + Math.random().toString(36).slice(-8) + '!',
+      password: 'Glotelho' + Math.random().toString(36).slice(-8) + '!',
       email_confirm: true,
       user_metadata: {
         full_name: body.nom,

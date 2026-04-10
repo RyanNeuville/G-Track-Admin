@@ -5,17 +5,17 @@ export async function GET() {
   const supabase = await createAdminClient()
   
   const { data, error } = await supabase
-    .from('deliveries')
+    .from('livraisons')
     .select(`
       *,
-      packages (*),
-      drivers (
-        profiles (
-          full_name
+      colis (*),
+      livreurs (
+        profils (
+          nom_complet
         )
       )
     `)
-    .order('delivery_date', { ascending: false })
+    .order('date_livraison', { ascending: false })
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -23,13 +23,13 @@ export async function GET() {
 
   const formattedDeliveries = (data || []).map((delivery: any) => ({
     id: delivery.id,
-    numero: `LIV-${new Date(delivery.delivery_date).getFullYear()}-${delivery.id.slice(0, 3).toUpperCase()}`,
-    chauffeur: delivery.drivers?.profiles?.full_name || 'Non assigné',
-    date: delivery.delivery_date,
-    colis: delivery.packages?.tracking_number || 'N/A',
+    numero: `LIV-${new Date(delivery.date_livraison).getFullYear()}-${delivery.id.slice(0, 3).toUpperCase()}`,
+    chauffeur: delivery.livreurs?.profils?.nom_complet || 'Non assigné',
+    date: delivery.date_livraison,
+    colis: delivery.colis?.numero_suivi || 'N/A',
     distance: `${delivery.distance_km || 0} km`,
-    statut: delivery.status === 'in_transit' ? 'en cours' : (delivery.status === 'delivered' ? 'terminée' : 'en attente'),
-    heure_depart: delivery.pickup_time ? new Date(delivery.pickup_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
+    statut: delivery.statut === 'en_cours' ? 'en cours' : (delivery.statut === 'terminee' ? 'terminée' : 'en attente'),
+    heure_depart: delivery.heure_ramassage ? new Date(delivery.heure_ramassage).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '--:--',
     heure_prevue: '18:00',
     region: delivery.region || 'Locale',
   }))
@@ -42,13 +42,13 @@ export async function POST(request: Request) {
   const body = await request.json()
   
   const { data, error } = await supabase
-    .from('routes')
+    .from('itineraires')
     .insert([{
-      delivery_date: body.date || new Date().toISOString().split('T')[0],
+      date_livraison: body.date || new Date().toISOString().split('T')[0],
       region: body.region,
-      total_deliveries: parseInt(body.colis) || 0,
-      total_distance: parseFloat(body.distance) || 0,
-      status: 'pending',
+      total_livraisons: parseInt(body.colis) || 0,
+      distance_totale: parseFloat(body.distance) || 0,
+      statut: 'en_attente',
     }])
     .select()
     .single()

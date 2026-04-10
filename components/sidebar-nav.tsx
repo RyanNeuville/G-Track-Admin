@@ -33,17 +33,17 @@ const menuItems = [
   },
   {
     label: 'Colis',
-    href: '/dashboard/packages',
+    href: '/dashboard/colis',
     icon: Package,
   },
   {
-    label: 'Livraisons',
-    href: '/dashboard/deliveries',
+    label: 'Livreurs',
+    href: '/dashboard/livreurs',
     icon: Truck,
   },
   {
-    label: 'Suivi temps réel',
-    href: '/dashboard/tracking',
+    label: 'Livraisons',
+    href: '/dashboard/livraisons',
     icon: Navigation,
   },
   {
@@ -91,7 +91,9 @@ export function SidebarNav() {
       <nav className="flex flex-col gap-2 p-4">
         {menuItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+          const isActive = item.href === '/dashboard' 
+            ? pathname === '/dashboard' 
+            : pathname === item.href || pathname.startsWith(item.href + '/')
           
           return (
             <Link key={item.href} href={item.href}>

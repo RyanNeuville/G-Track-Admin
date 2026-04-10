@@ -5,7 +5,7 @@ export async function GET() {
   const supabase = await createAdminClient()
   
   const { data, error } = await supabase
-    .from('packages')
+    .from('colis')
     .select('*')
     .order('created_at', { ascending: false })
 
@@ -16,13 +16,13 @@ export async function GET() {
   // Map database fields to the format expected by the frontend
   const formattedPackages = data.map((pkg: any) => ({
     id: pkg.id,
-    numero: pkg.tracking_number,
-    destinataire: pkg.recipient_name,
-    adresse: pkg.recipient_address,
-    poids: `${pkg.weight} kg`,
-    statut: pkg.status,
+    numero: pkg.numero_suivi,
+    destinataire: pkg.nom_destinataire,
+    adresse: pkg.adresse_destinataire,
+    poids: `${pkg.poids} kg`,
+    statut: pkg.statut,
     dateCreation: new Date(pkg.created_at).toLocaleDateString('fr-FR'),
-    valeur: pkg.declared_value || 0,
+    valeur: pkg.valeur_declaree || 0,
   }))
 
   return NextResponse.json(formattedPackages)
@@ -34,16 +34,16 @@ export async function POST(request: Request) {
   
   // Map frontend body to database fields
   const { data, error } = await supabase
-    .from('packages')
+    .from('colis')
     .insert([{
-      tracking_number: `GLO-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-      recipient_name: body.destinataire,
-      recipient_address: body.adresse,
-      weight: parseFloat(body.poids),
-      declared_value: parseFloat(body.valeur) || 0,
-      status: 'en attente',
-      sender_name: 'Expéditeur par défaut',
-      sender_address: 'Douala, Cameroun',
+      numero_suivi: `GLO-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+      nom_destinataire: body.destinataire,
+      adresse_destinataire: body.adresse,
+      poids: parseFloat(body.poids),
+      valeur_declaree: parseFloat(body.valeur) || 0,
+      statut: 'en attente',
+      nom_expediteur: 'Expéditeur par défaut',
+      adresse_expediteur: 'Douala, Cameroun',
     }])
     .select()
     .single()
@@ -55,13 +55,13 @@ export async function POST(request: Request) {
   // Format the returned data for the frontend
   const formattedPackage = {
     id: data.id,
-    numero: data.tracking_number,
-    destinataire: data.recipient_name,
-    adresse: data.recipient_address,
-    poids: `${data.weight} kg`,
-    statut: data.status,
+    numero: data.numero_suivi,
+    destinataire: data.nom_destinataire,
+    adresse: data.adresse_destinataire,
+    poids: `${data.poids} kg`,
+    statut: data.statut,
     dateCreation: new Date(data.created_at).toLocaleDateString('fr-FR'),
-    valeur: data.declared_value || 0,
+    valeur: data.valeur_declaree || 0,
   }
 
   return NextResponse.json(formattedPackage, { status: 201 })

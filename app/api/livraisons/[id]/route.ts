@@ -14,7 +14,7 @@ export async function DELETE(
     }
 
     const { error } = await supabase
-      .from('routes')
+      .from('itineraires')
       .delete()
       .eq('id', id)
 
